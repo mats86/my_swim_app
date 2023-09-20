@@ -1,8 +1,9 @@
-import 'package:bottom_picker/bottom_picker.dart';
-import 'package:flutter/material.dart';
-import 'package:im_stepper/stepper.dart';
 
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'InputCustomField.dart';
+import 'InputField.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,16 +11,102 @@ class LoginScreen extends StatefulWidget {
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
-
+enum LoginResult {
+  success,
+  failure,
+}
 class _LoginScreenState extends State<LoginScreen> {
   // THE FOLLOWING TWO VARIABLES ARE REQUIRED TO CONTROL THE STEPPER.
   int activeStep = 0; // Initial step set to 0.
 
   int upperBound = 4; // upperBound MUST BE total number of icons minus 1.
 
-  TextEditingController lastName = TextEditingController();
-  TextEditingController firstName = TextEditingController();
-  TextEditingController birthday = TextEditingController();
+  TextEditingController username = TextEditingController();
+  TextEditingController password = TextEditingController();
+
+  Future<void> registerUser() async {
+    const String serverUrl = 'http://10.0.2.2:5000'; // Ersetze dies durch die URL deines Servers
+
+    final user = User(username.text, password.text);
+    final body = jsonEncode(user.toJson());
+
+    try {
+      final response = await http.post(
+        Uri.parse('$serverUrl/registerUser'),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+        },
+        body: body
+      );
+      print(jsonDecode(response.body));
+      print(jsonDecode(response.body)['error']);
+      if (response.statusCode == 200) {
+        print('Benutzer erfolgreich hinzugefügt.');
+      } else {
+        print('Fehler beim Hinzufügen des Benutzers: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Fehler beim Hinzufügen des Benutzers: $e');
+    }
+  }
+
+  Future<bool> checkUser() async {
+    const String serverUrl = 'http://10.0.2.2:5000'; // Ersetze dies durch die URL deines Servers
+
+    final user = User(username.text, password.text);
+    final body = jsonEncode(user.toJson());
+
+    final response = await http.post(
+        Uri.parse('$serverUrl/checkUsername'),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+        },
+        body: body
+    );
+
+    if (response.statusCode == 200) {
+      // Der BenutzerName ist verfügbar
+      return true;
+    } else if (response.statusCode == 400) {
+      // Der BenutzerName ist bereits vergeben
+      return false;
+    } else {
+      // Ein Fehler ist aufgetreten
+      throw Exception('Fehler beim Überprüfen des BenutzerNamens.');
+    }
+  }
+
+  Future<void> loginUser() async {
+    const String serverUrl = 'http://10.0.2.2:5000'; // Ersetze dies durch die URL deines Servers
+
+    final user = User(username.text, password.text);
+    final body = jsonEncode(user.toJson());
+
+    try {
+      final response = await http.post(
+        Uri.parse('$serverUrl/loginUser'),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+      print(jsonDecode(response.body));
+      if (response.statusCode == 200) {
+        // Erfolgreiche Anmeldung
+        print('Anmeldung erfolgreich.');
+      } else if (response.statusCode == 401) {
+        // Ungültige Anmelde Informationen
+        print('Ungültige Anmelde Informationen.');
+      } else {
+        // Anderer Fehler
+        print('Fehler beim Anmelden: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Netzwerk Fehler oder andere Ausnahmen
+      print('Fehler beim Anmelden: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -33,221 +120,54 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             children: [
-              IconStepper(
-                icons: const [
-                  Icon(Icons.supervised_user_circle),
-                  Icon(Icons.flag),
-                  Icon(Icons.access_alarm),
-                  Icon(Icons.supervised_user_circle),
-                  Icon(Icons.flag),
-                ],
+              InputField(
+                controller: username,
+                labelText: 'Username',
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autoFocus: true,
+                  // validatorText: 'username'
+              ),
+              InputField(
+                controller: password,
+                labelText: 'Passwort',
+                obscureText: true,
+                textInputAction: TextInputAction.next,
+                  // validatorText: 'password'
+              ),
+          ElevatedButton(
+            onPressed: () async {
+              // Zuerst überprüfen Sie den BenutzerNamen
+              final isUsernameAvailable = await checkUser();
 
-                // activeStep property set to activeStep variable defined above.
-                activeStep: activeStep,
-
-                // This ensures step-tapping updates the activeStep.
-                onStepReached: (index) {
-                  setState(() {
-                    activeStep = index;
-                  });
-                },
-              ),
-              header(),
-              Expanded(
-                child: Center(
-                  child: body(),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  previousButton(),
-                  nextButton(),
-                ],
-              ),
+              if (isUsernameAvailable) {
+                // Wenn der BenutzerName verfügbar ist, versuchen Sie, den Benutzer zu registrieren
+                await registerUser();
+              } else {
+                // Zeigen Sie eine Fehlermeldung an oder ergreifen Sie andere Maßnahmen
+                print('Der BenutzerName ist bereits vergeben.');
+              }
+            },
+            child: const Text('Anmelden'),
+          )
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  /// Returns the next button.
-  Widget nextButton() {
-    return ElevatedButton(
-      onPressed: () {
-        // Increment activeStep, when the next button is tapped. However, check for upper bound.
-        if (activeStep < upperBound) {
-          setState(() {
-            activeStep++;
-          });
-        }
-      },
-      child: activeStep < upperBound ? const Text('Weiter') : const Text('Kostenpflichtig buchen') ,
-    );
-  }
+class User {
+  final String username;
+  final String password;
 
-  /// Returns the previous button.
-  Widget previousButton() {
-    return ElevatedButton(
-      onPressed: () {
-        // Decrement activeStep, when the previous button is tapped. However, check for lower bound i.e., must be greater than 0.
-        if (activeStep > 0) {
-          setState(() {
-            activeStep--;
-          });
-        } else {
-          Navigator.pop(context);
-        }
-      },
-      child: activeStep > 0 ? const Text('Zurück') : const Text('Abrechen'),
-    );
-  }
+  User(this.username, this.password);
 
-  /// Returns the header wrapping the header text.
-  Widget header() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.orange,
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              textAlign: TextAlign.center,
-              headerText(),
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 20,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Returns the header text based on the activeStep.
-  String headerText() {
-    switch (activeStep) {
-      case 0: // activeStep minus 1
-        return 'Preface 1';
-
-      case 1: // activeStep minus 1
-        return 'Table of Contents 2';
-
-      case 2: // activeStep minus 1
-        return 'About the Author 3';
-
-      case 3: // activeStep minus 1
-        return 'Publisher Information 4';
-
-      case 4: // activeStep minus 1
-        return 'Reviews 5';
-
-      default:
-        return 'Error';
-    }
-  }
-
-  Widget body() {
-    switch (activeStep) {
-      case 0: // activeStep minus 1
-        return stepOne();
-
-      case 2: // activeStep minus 1
-        return stepTow();
-
-      case 3: // activeStep minus 1
-        return stepThree();
-
-      case 4: // activeStep minus 1
-        return stepFour();
-
-      case 5: // activeStep minus 1
-        return stepFive();
-
-      default:
-        return const Column();
-    }
-  }
-
-  Widget stepOne() {
-    return Column(
-      children: [
-        const SizedBox(
-          height: 8,
-        ),
-        InputCustomField(
-          controller: firstName,
-          labelText: "Vorname des Schwimmschülers", validatorText: '',
-        ),
-        InputCustomField(
-          controller: lastName,
-          labelText: "Nachname des Schwimmschülers", validatorText: '',
-        ),
-        TextField(
-          controller: birthday,
-          decoration: const InputDecoration(
-            label: FittedBox(
-              fit: BoxFit.fitWidth,
-              child: Row(
-                children: [
-                  Text("Geburtstag des Kindes"),
-                  Padding(
-                    padding: EdgeInsets.all(3.0),
-                  ),
-                  Text('*', style: TextStyle(color: Colors.red)),
-                ],
-              ),
-            ),
-            border: OutlineInputBorder(),
-          ),
-          readOnly: true,
-          onTap: () async {
-            BottomPicker.date(
-              title: "Bitte gib das Geburtsdatum deines Kindes ein",
-              titleStyle: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: Colors.blue
-              ),
-              onChange: (date) {
-                // print(date);
-              },
-              onSubmit: (date) {
-                setState(() {
-                  // _swimmerAge = AgeCalculator.age(
-                  //     DateTime.parse(
-                  //         DateFormat('yyyy-MM-dd').format(date)));
-                  // birthday.text = DateFormat('dd.MM.yyyy').format(date);
-                });
-              },
-            ).show(context);
-          },
-        ),
-        const SizedBox(
-          height: 8,
-        ),
-      ],
-    );
-  }
-
-  Widget stepTow() {
-    return const Column();
-  }
-
-  Widget stepThree() {
-    return const Column();
-  }
-
-  Widget stepFour() {
-    return const Column();
-  }
-
-  Widget stepFive() {
-    return const Column();
+  Map<String, dynamic> toJson() {
+    return {
+      'username': username,
+      'password': password,
+    };
   }
 }

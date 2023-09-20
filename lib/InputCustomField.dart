@@ -1,18 +1,31 @@
 
+import 'package:email_validator/email_validator.dart';
 import 'package:flutter/material.dart';
 
 class InputCustomField extends StatelessWidget {
-  const InputCustomField({super.key, required this.controller, required this.labelText, required this.validatorText});
+  const InputCustomField(
+      {
+        super.key,
+        required this.controller,
+        required this.labelText,
+        required this.validatorText,
+        this.inputTyp = "",
+        this.confirmValue = "",
+        this.maxLines = 1
+      });
   final String labelText;
   final TextEditingController controller;
   final String validatorText;
-
+  final String inputTyp;
+  final String confirmValue;
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         TextFormField(
+          maxLines: maxLines,
           controller: controller,
           decoration: InputDecoration(
             filled: true,
@@ -33,19 +46,24 @@ class InputCustomField extends StatelessWidget {
               ),
             ),
           ),
+          enableInteractiveSelection: inputTyp == "email" ? false : true,
+          keyboardType: inputTyp == "number" ? TextInputType.phone : TextInputType.text,
           validator: (value) {
-            if (value == null || value.isEmpty) {
+            if(inputTyp == "email" && !EmailValidator.validate(value!))
+            {
+              return "Please enter a valid email";
+            }
+            else if(inputTyp == "emailConfirm" && value != confirmValue)
+            {
               return validatorText;
+            }
+            else {
+              if (value == null || value.isEmpty) {
+                return validatorText;
+              }
             }
             return null;
           },
-          // validator: (value) {
-          //   if(value!.isEmpty || !RegExp(r'^[a-z A-Z]+$').hasMatch(value)){
-          //     return "Enter correct name";
-          //   }else{
-          //     return null;
-          //   }
-          // },
         ),
         const SizedBox(
           height: 8,

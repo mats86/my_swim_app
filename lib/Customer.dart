@@ -1,6 +1,4 @@
 
-import 'dart:ffi';
-
 class Customer {
   String lastName;
   String firstName;
@@ -22,32 +20,35 @@ class Customer {
 }
 
 class Course {
-  int kursID;
-  String kursName;
-  String kursPrice;
-  String kursBeschreibung;
-  bool hatFixTermin;
-  bool istKursAktive;
-  String teilnehmerBegrenzung;
-  String kursDauer;
-  String minAlter;
-  String maxAlter;
+  final int courseID;
+  final String courseName;
+  final String coursePrice;
+  final String courseDescription;
+  final int courseHasFixedDates;
+  final String courseRange;
+  final String courseDuration;
 
   Course(
-      {
-        this.kursID = 0,
-        this.kursName = '',
-        this.kursPrice = '',
-        this.kursBeschreibung = '',
-        this.hatFixTermin = false,
-        this.istKursAktive = false,
-        this.teilnehmerBegrenzung = '',
-        this.kursDauer = '',
-        this.minAlter = '',
-        this.maxAlter = '',
-
-      }
+      this.courseID,
+      this.courseName,
+      this.coursePrice,
+      this.courseDescription,
+      this.courseHasFixedDates,
+      this.courseRange,
+      this.courseDuration,
   );
+
+  Map<String, dynamic> toJson() {
+    return {
+      'CourseID': courseID,
+      'courseName': courseName,
+      'coursePrice': coursePrice,
+      'courseDescription' : courseDescription,
+      'courseHasFixedDates': courseHasFixedDates,
+      'courseRange': courseRange,
+      'courseDuration': courseDuration,
+    };
+  }
 }
 
 class OpenTime {
@@ -70,20 +71,22 @@ class OpenTime {
   };
 }
 
-class SwimmingPool {
-  int schwimmbadID;
-  String name;
-  String adresse;
-  String telefonnummer;
-  late List<OpenTime> oeffnungszeiten;
+class SwimPool {
+  final int schwimmbadID;
+  final String name;
+  final String address;
+  final String phoneNumber;
+  final String openingTime;
 
-  SwimmingPool(
-      {
-        this.schwimmbadID = 0,
-        this.name = '',
-        this.adresse = '',
-        this.telefonnummer = '',
-        required this.oeffnungszeiten
-      }
-  );
+  SwimPool(this.schwimmbadID, this.name, this.address, this.phoneNumber, this.openingTime);
+
+  Map<String, dynamic> toJson() {
+    return {
+      'schwimmbadID': schwimmbadID,
+      'name': name,
+      'address': address,
+      'phoneNumber' : phoneNumber,
+      'openingTime': openingTime,
+    };
+  }
 }

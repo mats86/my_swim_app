@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:my_swim_app/AddSwimPoolScreen.dart';
+import 'package:my_swim_app/SwimPoolScreen.dart';
 
 import 'AddCourseScreen.dart';
 import 'LoginScreen.dart';
@@ -64,6 +66,18 @@ class HomeScreen extends StatelessWidget {
                   Navigator.push(context, MaterialPageRoute(builder: (context) => const SwimCourseScreen()));
                 },
                 child: const Text('Schwimmkurse'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const AddSwimPoolScreen()));
+                },
+                child: const Text('Add Schwimmbad'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SwimPoolScreen()));
+                },
+                child: const Text('Schwimmbad'),
               ),
             ],
           ),

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:my_swim_app/Customer.dart';
 import 'package:my_swim_app/InputCustomField.dart';
+import 'package:my_swim_app/InputField.dart';
 import 'package:my_swim_app/logic/models/mysql.dart';
 
 import 'CustomerDetails.dart';
@@ -16,7 +17,7 @@ List<String> sisonList = <String>['Laufender Sommer', 'Kommender Sommer'];
 List<String> titleList = <String>['Herr', 'Frau', 'Divers'];
 
 List<Course> _courseList = [];
-List<SwimmingPool> _swimmingPoolsList = [];
+List<SwimPool> _swimmingPoolsList = [];
 List<SwimPoolCheckbox> _swimPoolCheckbox = [];
 dynamic _swimmingCourses, _swimmingPools;
 
@@ -53,7 +54,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   TextEditingController firstName = TextEditingController();
   TextEditingController birthday = TextEditingController();
   TextEditingController email = TextEditingController();
+  TextEditingController emailConfirm = TextEditingController();
   TextEditingController phoneNumber = TextEditingController();
+  TextEditingController phoneNumberConfirm = TextEditingController();
 
   TextEditingController lastNameParents = TextEditingController();
   TextEditingController firstNameParents = TextEditingController();
@@ -66,7 +69,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void initState() {
-    _getCustomer('select * from swim_db.kurs;');
+    _getCustomer('select * from swim_db.Kurs;');
     _getSwimmingPools('select * from swim_db.schwimmbad');
     super.initState();
   }
@@ -88,12 +91,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         openTime=(json.decode(row[4].toString()) as List).map((i) =>
             OpenTime.fromJson(i)).toList();
         _swimmingPoolsList.add(
-          SwimmingPool(
-              schwimmbadID: row[0],
-              name: row[1],
-              adresse: row[2],
-              telefonnummer: row[3],
-              oeffnungszeiten: openTime
+            SwimPool(
+              row[0],
+              row[1],
+              row[2],
+              row[3],
+              openTime.toString()
           )
         );
         _swimPoolCheckbox.add(SwimPoolCheckbox(
@@ -106,52 +109,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   _getAvailableCourse() {
     _courseList = [];
+    print('ttt');
     for (var row in _swimmingCourses) {
+      print('object');
+      print(row[0]);
+
       int minAlter, maxAlter;
       minAlter = int.parse(row[8].toString().split('_')[0].replaceAll("+", ""));
       maxAlter = int.parse(row[8].toString().split('_')[1]);
       if(_swimmerAge.years.clamp(minAlter, maxAlter) == _swimmerAge.years){
         _courseList.add(
             Course(
-                kursID: row[0],
-                kursName: row[2],
-                kursPrice: row[4],
-                kursBeschreibung: row[5],
-                minAlter: row[8].toString().split('_')[0],
-                maxAlter: row[8].toString().split('_')[1],
-                kursDauer: row[10]
+                row[0],
+                row[2],
+                row[4],
+                row[5],
+                0,
+                row[8].toString().split('_')[0],
+                '0'
             )
         );
       } else {
         //
       }
     }
-    selectedItem = _courseList.first.kursName;
-  }
-
-  _setOpenTime() async {
-    var result = await db.getConnection().then((conn) {
-      List<OpenTime> lot = [];
-      lot.add(OpenTime("Mo", "09:00", "17:00"));
-      lot.add(OpenTime("Di", "09:00", "17:00"));
-      lot.add(OpenTime("Mi", "09:00", "17:00"));
-      lot.add(OpenTime("Do", "09:00", "17:00"));
-      lot.add(OpenTime("Fr", "09:00", "17:00"));
-      lot.add(OpenTime("Sa", "09:00", "17:00"));
-      lot.add(OpenTime("So", "09:00", "17:00"));
-      String sql = 'insert into Schwimmbad '
-          '(Name, Adresse, Telefonnummer, Oeffnungszeiten) values (?, ?, ?, ?)';
-      conn.query(sql, ["Schwimmbad", "Schwimm Straße 11, 88032 Bad", "0123456789", jsonEncode(lot)]);
-    });
-  }
-
-  _setCustomer(Customer customer) async
-  {
-    var result = await db.getConnection().then((conn) {
-      String sql = 'insert into users (name, email, age) values (?, ?, ?)';
-      return conn.query(sql, [customer.firstName, customer.email, 6]);
-    });
-    print('Inserted row id=${result.insertId}');
+    selectedItem = _courseList.first.courseName;
   }
 
   @override
@@ -205,8 +187,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  previousButton(),
-                  nextButton(),
+                  Expanded(child: previousButton()),
+                  const SizedBox(width: 30),
+                  Expanded(child: nextButton()),
                 ],
               ),
             ],
@@ -346,35 +329,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget stepOne() {
     return Column(
       children: [
-        InputCustomField(
+        InputField(
           controller: firstName,
           labelText: "Vorname des Schwimmschülers",
-          validatorText: 'firstName',
+          // validatorText: 'firstName',
         ),
-        InputCustomField(
+        InputField(
           controller: lastName,
           labelText: "Nachname des Schwimmschülers",
-          validatorText: 'lastName',
+          // validatorText: 'lastName',
         ),
         TextField(
           controller: birthday,
           decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFFE0E0E0),
             label: const FittedBox(
               fit: BoxFit.fitWidth,
               child: Row(
                 children: [
-                  Text("Geburtstag des Kindes"),
+                  Text('Geburtstag des Kindes',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold),),
                   Padding(
                     padding: EdgeInsets.all(3.0),
                   ),
-                  Text('*', style: TextStyle(color: Colors.red)),
+                  Text('*',
+                      style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold
+                      )
+                  ),
                 ],
               ),
             ),
+            // errorText: errorText,
+            floatingLabelBehavior: FloatingLabelBehavior.always,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24.0),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           readOnly: true,
@@ -458,11 +448,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   height: 30,
                   child: Row(
                     children: [
-                      // RadioListTile(value: value, groupValue: groupValue, onChanged: onChanged),
-                      // ListTile(),
                       Radio(
                           groupValue: selectedItem,
-                          value: _courseList[index].kursName,
+                          value: _courseList[index].courseName,
                           // title: Text(_swimPoolCheckbox[index].title),
                           //subtitle: Text(_swimPoolCheckbox[index].subTitle),
                           onChanged: (val){
@@ -471,8 +459,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             });
                           },
                         ),
-                      Text('${_courseList[index].kursName} '
-                          '${_courseList[index].kursPrice} '
+                      Text('${_courseList[index].courseName} '
+                          '${_courseList[index].coursePrice} '
                           '€'),
                       IconButton(
                         onPressed: () => showCourseDescription(context, index),
@@ -639,39 +627,89 @@ class _SignUpScreenState extends State<SignUpScreen> {
               labelText: "Ort",
               validatorText: 'lastName',
             ),
-            TextFormField(
-              controller: email,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'E-mail *',
-                validator: (value) => EmailValidator.validate(value) ? null : "Please enter a valid email",
-              ),
+            InputCustomField(
+                controller: email,
+                labelText: "E-Mail",
+                validatorText: "Please enter a valid email",
+                inputTyp: "email",
             ),
-            TextField(
-              controller: email,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'E-Mail-Bestätigung *',
-              ),
+            InputCustomField(
+              controller: emailConfirm,
+              labelText: "E-Mail-Bestätigung",
+              validatorText: "Please enter a valid email",
+              inputTyp: "emailConfirm",
+              confirmValue: email.text
             ),
             const SizedBox(
               height: 8,
             ),
             IntlPhoneField(
               controller: phoneNumber,
-              decoration: const InputDecoration(
-                labelText: 'Telefonnummer *',
+              decoration: InputDecoration(
+                label: const Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: 'Handynummer '),
+                      TextSpan(
+                        text: '*',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ],
+                  ),
+                ),
                 border: OutlineInputBorder(
-                  borderSide: BorderSide(),
+                  borderRadius: BorderRadius.circular(24.0),
+                  borderSide: const BorderSide(),
                 ),
               ),
               initialCountryCode: 'DE',
               languageCode: 'DE',
+              autovalidateMode: AutovalidateMode.disabled,
+              cursorRadius: const Radius.circular(24.0),
               onChanged: (phoneNumber) {
                 setState(() {
                   _customer.phoneNumber = phoneNumber.completeNumber;
                   _customer.whatsappNumber = phoneNumber.completeNumber;
                 });
+              },
+            ),
+            IntlPhoneField(
+              controller: phoneNumberConfirm,
+              decoration: InputDecoration(
+                label: const Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: 'Handynummer '),
+                      TextSpan(
+                        text: '*',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ],
+                  ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24.0),
+                  borderSide: const BorderSide(),
+                ),
+              ),
+              initialCountryCode: 'DE',
+              languageCode: 'DE',
+              autovalidateMode: AutovalidateMode.disabled,
+              cursorRadius: const Radius.circular(24.0),
+              invalidNumberMessage: 't',
+              disableLengthCheck: true,
+              onChanged: (phoneNumber) {
+                setState(() {
+                  _customer.phoneNumber = phoneNumber.completeNumber;
+                  _customer.whatsappNumber = phoneNumber.completeNumber;
+                });
+              },
+              validator: (value) {
+                if(value?.completeNumber != phoneNumberConfirm.text)
+                {
+                  return 'tttt';
+                }
+                return null;
               },
             )
           ],
@@ -697,8 +735,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Kurs Name: ${_courseList[index].kursName}', textAlign: TextAlign.left,),
-                    Text('Kurs Price: ${_courseList[index].kursPrice} €', textAlign: TextAlign.right,),
+                      'Kurs Name: ${_courseList[index].courseName}', textAlign: TextAlign.left,),
+                    Text('Kurs Price: ${_courseList[index].coursePrice} €', textAlign: TextAlign.right,),
                   ],
                 )
             ),
@@ -712,6 +750,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ],
       ),
     );
+  }
+
+  String? validateMobile(String value) {
+// Indian Mobile number are of 10 digit only
+    if (value.length != 10) {
+      return 'Mobile Number must be of 10 digit';
+    } else {
+      return null;
+    }
   }
 }
 
