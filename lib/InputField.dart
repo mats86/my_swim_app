@@ -30,11 +30,11 @@ class InputField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        TextField(
+        TextFormField(
           controller: controller,
           autofocus: autoFocus,
           onChanged: onChanged,
-          onSubmitted: onSubmitted,
+          // onSubmitted: onSubmitted,
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           obscureText: obscureText,

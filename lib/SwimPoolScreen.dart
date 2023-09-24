@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'AddSwimPoolScreen.dart';
-import 'Customer.dart';
+import 'AppConfig.dart';
+import 'logic/models/models.dart';
 
 List<SwimPool> swimPools = [];
 List<OpenTime> openTimes = [];
@@ -24,13 +25,12 @@ class _SwimPoolScreenState extends State<SwimPoolScreen> {
   }
 
   Future<void> getSwimPools() async {
-    const String serverUrl = 'https://healthy-reason-398307.ey.r.appspot.com'; // Replace with your server URL
-
     try {
       final response = await http.get(
-        Uri.parse('$serverUrl/getSwimPools'),
+        Uri.parse('${AppConfig.serverUrl}/getSwimPools'),
         headers: <String, String>{
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
       );
 
@@ -69,9 +69,8 @@ class _SwimPoolScreenState extends State<SwimPoolScreen> {
   }
 
   Future<bool> deleteSwimPool(int swimPoolID) async {
-    const serverUrl = 'http://10.0.2.2:5000'; // Ersetzen Sie dies durch Ihre Server-URL
     final response = await http.delete(
-      Uri.parse('$serverUrl/deleteSwimPool/$swimPoolID'),
+      Uri.parse('${AppConfig.serverUrl}/deleteSwimPool/$swimPoolID'),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },
@@ -203,11 +202,6 @@ class _SwimPoolScreenState extends State<SwimPoolScreen> {
                   return false;
                 }
               },
-
-
-
-
-
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Card(
@@ -217,11 +211,34 @@ class _SwimPoolScreenState extends State<SwimPoolScreen> {
                     subtitle: Text(swimPools[index].address),
                     children: [
                       for (int i = 0; i < openTimes.length; i++)
-                          Text('${openTimes[i].day}: ${openTimes[i].openTime} - ${openTimes[i].closeTime}'),
-                        // ListTile(
-                        //   title: Text('${openTimes[i].day}: ${openTimes[i].openTime} - ${openTimes[i].closeTime}'),
-                        //   // subtitle: Text('Open Time: ${openTimes[i].openTime} - Close Time: ${openTimes[i].closeTime}'),
+                        // Align(
+                        //   alignment: Alignment.centerLeft,
+                        //   child: Text(
+                        //     '${openTimes[i].day}:${openTimes[i].openTime} - ${openTimes[i].closeTime}',
+                        //     style: const TextStyle(
+                        //       fontSize: 16.0,
+                        //       fontWeight: FontWeight.bold,
+                        //       color: Colors.black,
+                        //     ),
+                        //   ),
                         // ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 1.0),
+                          child: Text(
+                            '${openTimes[i].day}:'
+                                '${openTimes[i].openTime} - '
+                                '${openTimes[i].closeTime}',
+                            style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontStyle: FontStyle.normal,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 19,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:my_swim_app/SwimPoolScreen.dart';
-import 'Customer.dart';
+import 'AppConfig.dart';
+import 'logic/models/models.dart';
 import 'InputCustomField.dart';
 import 'InputCustomOpeningTime.dart';
 
@@ -36,7 +37,6 @@ class _AddSwimPoolScreenState extends State<AddSwimPoolScreen> {
   ];
 
   Future<void> addSwimPool() async {
-    const String serverUrl = 'http://10.0.2.2:5000'; // Ersetzen Sie dies durch die URL Ihres Servers
     final String address = '${swimPoolStreet.text} '
         '${swimPoolStreetNr.text}, '
         '${swimPoolZipCode.text} '
@@ -62,7 +62,7 @@ class _AddSwimPoolScreenState extends State<AddSwimPoolScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('$serverUrl/addSwimPool'),
+        Uri.parse('${AppConfig.serverUrl}/addSwimPool'),
         headers: <String, String>{
           'Content-Type': 'application/json',
         },
@@ -79,8 +79,6 @@ class _AddSwimPoolScreenState extends State<AddSwimPoolScreen> {
   }
 
   Future<void> updateSwimPool() async {
-    const String serverUrl = 'http://10.0.2.2:5000'; // Ersetzen Sie dies durch die URL Ihres Servers
-
     final String address = '${swimPoolStreet.text} '
         '${swimPoolStreetNr.text}, '
         '${swimPoolZipCode.text} '
@@ -107,7 +105,7 @@ class _AddSwimPoolScreenState extends State<AddSwimPoolScreen> {
 
     try {
       final response = await http.put(
-        Uri.parse('$serverUrl/updateSwimPool/$schwimmbadID'), // Hier verwenden wir die Schwimmbad-ID für die Aktualisierung
+        Uri.parse('${AppConfig.serverUrl}/updateSwimPool/$schwimmbadID'), // Hier verwenden wir die Schwimmbad-ID für die Aktualisierung
         headers: <String, String>{
           'Content-Type': 'application/json',
         },
@@ -124,9 +122,8 @@ class _AddSwimPoolScreenState extends State<AddSwimPoolScreen> {
   }
 
   Future<void> deleteSwimPool() async {
-    const serverUrl = 'http://10.0.2.2:5000'; // Ersetzen Sie dies durch Ihre Server-URL
     final response = await http.delete(
-      Uri.parse('$serverUrl/deleteSwimPool/$schwimmbadID'),
+      Uri.parse('${AppConfig.serverUrl}/deleteSwimPool/$schwimmbadID'),
       headers: <String, String>{
         'Content-Type': 'application/json',
       },

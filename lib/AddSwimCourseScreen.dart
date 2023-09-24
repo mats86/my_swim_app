@@ -1,21 +1,22 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:my_swim_app/InputCustomField.dart';
 import 'package:http/http.dart' as http;
-import 'Customer.dart';
+import 'package:my_swim_app/InputField.dart';
+import 'AppConfig.dart';
+import 'logic/models/models.dart';
 
-class AddCourseScreen extends StatefulWidget {
-  const AddCourseScreen({super.key});
+class AddSwimCourseScreen extends StatefulWidget {
+  const AddSwimCourseScreen({super.key});
 
   @override
-  State<AddCourseScreen> createState() => _AddCourseScreenState();
+  State<AddSwimCourseScreen> createState() => _AddSwimCourseScreenState();
 
 }
 
 List<String> courseHasFixedDatesOptions = ['Nein', 'Ja'];
 
-class _AddCourseScreenState extends State<AddCourseScreen> {
+class _AddSwimCourseScreenState extends State<AddSwimCourseScreen> {
   final _formKey = GlobalKey<FormState>();
   TextEditingController courseName = TextEditingController();
   TextEditingController coursePrise = TextEditingController();
@@ -33,11 +34,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   int courseHasFixDatesValue = 0;
   bool isFixedDatesVisible = false;
 
-  Future<void> addCourse() async {
-    const String serverUrl = 'http://10.0.2.2:5000'; // Ersetzen Sie dies durch die URL Ihres Servers
-
-
-    final Course course = Course(
+  Future<void> addSwimCourse() async {
+    final SwimCourse swimCourse = SwimCourse(
       courseID,
       courseName.text,
       coursePrise.text,
@@ -47,11 +45,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
        courseDuration.text,
     );
 
-    final body = jsonEncode(course);
+    final body = jsonEncode(swimCourse);
 
     try {
       final response = await http.post(
-        Uri.parse('$serverUrl/addCourse'),
+        Uri.parse('${AppConfig.serverUrl}/addCourse'),
         headers: <String, String>{
           'Content-Type': 'application/json',
         },
@@ -78,32 +76,37 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: SingleChildScrollView(
               child: Column(
               children: [
-                InputCustomField(
+                InputField(
                   controller: courseName,
-                    labelText: "Kurs Name", validatorText: '',
+                  labelText: "Kurs Name",
+                  // validatorText: '',
                 ),
-                InputCustomField(
-                    controller: coursePrise,
-                    labelText: "Kurs Price", validatorText: '',
+                InputField(
+                  controller: coursePrise,
+                  labelText: "Kurs Price",
+                  // validatorText: '',
                 ),
-                InputCustomField(
+                InputField(
                   controller: courseDescription,
-                  labelText: "Kurs Beschreibung", validatorText: '',
-                  maxLines: null,
+                  labelText: "Kurs Beschreibung",
+                  // validatorText: '',
+                  // maxLines: null,
                 ),
                 Row(
                   children: [
                     Expanded(
-                      child: InputCustomField(
+                      child: InputField(
                         controller: courseAeRangeMin,
-                        labelText: "Min Alter", validatorText: '',
+                        labelText: "Min Alter",
+                        // validatorText: '',
                       ),
                     ),
                     const SizedBox(width: 30),
                     Expanded(
-                      child: InputCustomField(
+                      child: InputField(
                         controller: courseAeRangeMax,
-                        labelText: "Max Alter", validatorText: '',
+                        labelText: "Max Alter",
+                        // validatorText: '',
                       ),
                     ),
                   ],
@@ -155,9 +158,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                         ),
                         Visibility(
                             visible: isFixedDatesVisible,
-                            child: InputCustomField(
+                            child: InputField(
                               controller: courseFixedDates,
-                              labelText: "Max Alter", validatorText: '',
+                              labelText: "Max Alter",
+                              // validatorText: '',
                             )
                         ),
                       ],
@@ -165,10 +169,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                InputCustomField(
+                InputField(
                   controller: courseDuration,
                   labelText: "Kurs Dauer",
-                  validatorText: '',
+                  // validatorText: '',
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -195,7 +199,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     return ElevatedButton(
       onPressed: () async {
         if (_formKey.currentState!.validate()) {
-          isNewCourse ? await addCourse(): await addCourse();
+          isNewCourse ? await addSwimCourse(): await addSwimCourse();
 
           if (!context.mounted) return;
           // Navigator.pop(context);

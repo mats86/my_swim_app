@@ -1,89 +1,204 @@
 import 'package:flutter/material.dart';
-import 'package:my_swim_app/AddSwimPoolScreen.dart';
-import 'package:my_swim_app/SwimPoolScreen.dart';
+import 'package:my_swim_app/SignUpScreen.dart';
+import 'package:my_swim_app/SwimCourseScreen.dart';
+import 'CustomerList.dart';
+import 'SwimPoolScreen.dart';
+import 'CustomerDashboard.dart';
+import 'theme.dart';
 
-import 'AddCourseScreen.dart';
-import 'LoginScreen.dart';
-import 'SignUpScreen.dart';
-import 'SwimCourseScreen.dart';
+void main() {
+  runApp(const MyApp());
+}
 
-void main() => runApp(const MyApp());
+class MyApp extends StatefulWidget {
+  const MyApp({Key? key}) : super(key: key);
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  bool get useLightMode {
+    switch (_themeMode) {
+      case ThemeMode.system:
+        return MediaQuery.of(context).platformBrightness == Brightness.light;
+      case ThemeMode.light:
+        return true;
+      case ThemeMode.dark:
+        return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: HomeScreen(),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Demo',
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: _themeMode,
+      home: MyHomePage(
+        title: 'Schwimmschule Allgäu',
+        useLightMode: useLightMode,
+        handleBrightnessChange: (useLightMode) {
+          setState(() {
+            _themeMode = useLightMode ? ThemeMode.light : ThemeMode.dark;
+          });
+        },
+      ),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({
+    Key? key,
+    required this.title,
+    required this.handleBrightnessChange,
+    required this.useLightMode,
+  }) : super(key: key);
+
+  final String title;
+  final bool useLightMode;
+  final void Function(bool useLightMode) handleBrightnessChange;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  Widget _buildElevatedButton(String text, void Function() onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(220, 40),
+      ),
+      child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: const Text('Schwimmschule Allgäu'),
-          leading: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Image.asset("assets/images/cropped-Logo-Wassermenschen.png"),
-          )
+        title: Text(widget.title),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset("assets/images/cropped-Logo-Wassermenschen.png"),
+        ),
+        actions: <Widget>[
+          _BrightnessButton(
+            handleBrightnessChange: widget.handleBrightnessChange,
+          ),
+        ],
       ),
       body: Center(
         child: Container(
           constraints: const BoxConstraints.expand(),
           decoration: const BoxDecoration(
-            image: DecorationImage(image: AssetImage("assets/images/WM-Head-BG.jpg"),
-                fit: BoxFit.cover),
+            image: DecorationImage(
+              image: AssetImage("assets/images/WM-Head-BG.jpg"),
+              fit: BoxFit.cover,
+            ),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-                },
-                child: const Text('Login'),
+              _buildElevatedButton('Schwimmkurs buchen', () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SignUpScreen(),
+                  ),
+                );
+              }),
+              const SizedBox(
+                height: 8.0,
               ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpScreen()));
-                },
-                child: const Text('Schwimmkurs buchen'),
+              _buildElevatedButton('Schwimmbäder', () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SwimPoolScreen(),
+                  ),
+                );
+              }),
+              const SizedBox(
+                height: 8.0,
               ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const AddCourseScreen()));
-                },
-                child: const Text('Add Kurs'),
+              _buildElevatedButton('Kurse', () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SwimCourseScreen(),
+                  ),
+                );
+              }),
+              const SizedBox(
+                height: 8.0,
               ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SwimCourseScreen()));
-                },
-                child: const Text('Schwimmkurse'),
+              _buildElevatedButton('Login', () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CustomerDashboard(),
+                  ),
+                );
+              }),
+              const SizedBox(
+                height: 8.0,
               ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const AddSwimPoolScreen()));
-                },
-                child: const Text('Add Schwimmbad'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SwimPoolScreen()));
-                },
-                child: const Text('Schwimmbad'),
-              ),
+              _buildElevatedButton('Kunde', () {
+                final List<Customer> customers = [
+                Customer('Kunde 1', 'Aktiv'),
+                Customer('Kunde 2', 'Inaktiv'),
+                Customer('Kunde 3', ''),
+                Customer('Kunde 4', ''),
+                Customer('Kunde 5', ''),
+                ];
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CustomerList(customers),
+                  ),
+                );
+              }),
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.large(
+        onPressed: () {},
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
       ),
     );
   }
 }
 
+class _BrightnessButton extends StatelessWidget {
+  const _BrightnessButton({
+    required this.handleBrightnessChange,
+    this.showTooltipBelow = true,
+  });
+
+  final Function handleBrightnessChange;
+  final bool showTooltipBelow;
+
+  @override
+  Widget build(BuildContext context) {
+    final isBright = Theme.of(context).brightness == Brightness.light;
+    return Tooltip(
+      preferBelow: showTooltipBelow,
+      message: 'Toggle brightness',
+      child: IconButton(
+        icon: isBright
+            ? const Icon(Icons.dark_mode_outlined)
+            : const Icon(Icons.light_mode_outlined),
+        onPressed: () => handleBrightnessChange(!isBright),
+      ),
+    );
+  }
+}

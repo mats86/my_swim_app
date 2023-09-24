@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:age_calculator/age_calculator.dart';
 import 'package:bottom_picker/bottom_picker.dart';
@@ -6,20 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:im_stepper/stepper.dart';
 import 'package:intl/intl.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
-import 'package:my_swim_app/Customer.dart';
-import 'package:my_swim_app/InputCustomField.dart';
+import 'package:my_swim_app/logic/models/models.dart';
 import 'package:my_swim_app/InputField.dart';
-import 'package:my_swim_app/logic/models/mysql.dart';
 
 import 'CustomerDetails.dart';
+import 'logic/models/dataBase.dart';
 
-List<String> sisonList = <String>['Laufender Sommer', 'Kommender Sommer'];
+List<String> saisonList = <String>['Laufender Sommer', 'Kommender Sommer'];
 List<String> titleList = <String>['Herr', 'Frau', 'Divers'];
 
-List<Course> _courseList = [];
-List<SwimPool> _swimmingPoolsList = [];
-List<SwimPoolCheckbox> _swimPoolCheckbox = [];
-dynamic _swimmingCourses, _swimmingPools;
+List<SwimCourse> swimCourses = [];
+List<SwimPools> swimPools = [];
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -30,25 +26,21 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  List<String> fixTermine = [
-    'Test1',
-    'Test2',
-    'Test3',
-  ];
-  bool _isVisibleFixTermine = false;
-
+  final Summary summary = Summary();
+  bool isLoading = true;
   // THE FOLLOWING TWO VARIABLES ARE REQUIRED TO CONTROL THE STEPPER.
-  int activeStep = 0; // Initial step set to 0.
+  int activeStepIndex = 0; // Initial step set to 0.
 
   int upperBound = 4; // upperBound MUST BE total number of icons minus 1.
 
   final _customer = Customer();
-  final int _activeStepIndex = 0;
+  late String courseSelectedItem;
+  String saisonValue = saisonList.first;
+  String titleValue = titleList.first;
 
-  late String selectedItem;
-  String dropdownValue = sisonList.first;
-  String dropdownTitleValue = titleList.first;
+  bool isConfirmed = false;
+  bool isCancelled = false;
+  bool isGDPRConsent = false;
 
   TextEditingController lastName = TextEditingController();
   TextEditingController firstName = TextEditingController();
@@ -69,72 +61,60 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void initState() {
-    _getCustomer('select * from swim_db.Kurs;');
-    _getSwimmingPools('select * from swim_db.schwimmbad');
     super.initState();
+    // Hier können Sie Ihre asynchronen Operationen durchführen
+    fetchSwimCourses();
+    fetchSwimPools();
   }
 
-  var db = Mysql();
+  Future<List<SwimCourse>> fetchSwimCourses() async {
+    try {
+      swimCourses = await getSwimCourses(); // Auf das Ergebnis warten
+      print(swimCourses.length);
+      courseSelectedItem = swimCourses.first.courseName;
 
-  _getCustomer(String sql) async {
-    db.getConnection().then((conn) async {
-      _swimmingCourses = await conn.query(sql);
-    });
+      return swimCourses; // Liste von Swim-Kursen zurückgeben
+    } catch (e) {
+      // Hier können Sie Fehler behandeln, die in der getSwimCourses-Funktion auftreten
+      // print('Error fetching swim courses: $e');
+      return []; // Leere Liste zurückgeben, wenn ein Fehler auftritt
+    }
   }
 
-  _getSwimmingPools(String sql) async {
-    db.getConnection().then((conn) async {
-      _swimmingPools = await conn.query(sql);
-      _swimmingPoolsList = [];
-      List<OpenTime> openTime;
-      for (var row in _swimmingPools) {
-        openTime=(json.decode(row[4].toString()) as List).map((i) =>
-            OpenTime.fromJson(i)).toList();
-        _swimmingPoolsList.add(
-            SwimPool(
-              row[0],
-              row[1],
-              row[2],
-              row[3],
-              openTime.toString()
-          )
-        );
-        _swimPoolCheckbox.add(SwimPoolCheckbox(
-            isSelected: false,
-            title: row[1].toString(),
-            subTitle: row[2].toString()));
-      }
-    });
+  Future<List<SwimPools>> fetchSwimPools() async {
+    try {
+      swimPools = await getSwimPools();
+      // Setzen Sie isLoading auf false, um anzuzeigen, dass die Daten geladen sind
+      setState(() {
+        isLoading = false;
+      });
+      return swimPools; // Liste von Swim-Kursen zurückgeben
+    } catch (e) {
+      // Hier können Sie Fehler behandeln, die in der getSwimCourses-Funktion auftreten
+      // print('Error fetching swim courses: $e');
+      setState(() {
+        isLoading = false;
+      });
+      return []; // Leere Liste zurückgeben, wenn ein Fehler auftritt
+    }
   }
 
-  _getAvailableCourse() {
-    _courseList = [];
-    print('ttt');
-    for (var row in _swimmingCourses) {
-      print('object');
-      print(row[0]);
-
+  Future<void> getMatchingCourse() async {
+    // Jetzt können Sie die Liste der SwimCourses verwenden
+    for (int i = 0; i < swimCourses.length; i++) {
       int minAlter, maxAlter;
-      minAlter = int.parse(row[8].toString().split('_')[0].replaceAll("+", ""));
-      maxAlter = int.parse(row[8].toString().split('_')[1]);
-      if(_swimmerAge.years.clamp(minAlter, maxAlter) == _swimmerAge.years){
-        _courseList.add(
-            Course(
-                row[0],
-                row[2],
-                row[4],
-                row[5],
-                0,
-                row[8].toString().split('_')[0],
-                '0'
-            )
-        );
+      minAlter = int.parse(swimCourses[i].courseRange.split('_')[0].replaceAll("+", ""));
+      maxAlter = int.parse(swimCourses[i].courseRange.split('_')[1]);
+
+      if (_swimmerAge.years.clamp(minAlter, maxAlter) == _swimmerAge.years) {
+        swimCourses[i].isCourseVisible = true;
+        print(swimCourses[i]);
       } else {
-        //
+        swimCourses[i].isCourseVisible = false;
       }
     }
-    selectedItem = _courseList.first.courseName;
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +126,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: Image.asset("assets/images/cropped-Logo-Wassermenschen.png"),
           )
       ),
-      body: Padding(
+      body: isLoading
+        ? const Center(
+                  child: CircularProgressIndicator(),
+                )
+          : Padding(
         padding: const EdgeInsets.all(8.0),
         child: Form(
           key: _formKey,
@@ -162,12 +146,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ],
 
                 // activeStep property set to activeStep variable defined above.
-                activeStep: activeStep,
+                activeStep: activeStepIndex,
 
                 // This ensures step-tapping updates the activeStep.
                 onStepReached: (index) {
                   setState(() {
-                    activeStep = index;
+                    activeStepIndex = index;
                   });
                 },
               ),
@@ -211,16 +195,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
           );
 
           // Increment activeStep, when the next button is tapped. However, check for upper bound.
-          if (activeStep < upperBound) {
+          if (activeStepIndex < upperBound) {
             setState(() {
-              activeStep++;
+              activeStepIndex++;
             });
-            if(activeStep == 1){
-              _getAvailableCourse();
-            }
+            if(activeStepIndex == 1) {
+              getMatchingCourse();
+            } else if(activeStepIndex == 2) {
+
+            } else if(activeStepIndex == upperBound) {
+              summary.firstName = firstName.text;
+              summary.lastName = lastName.text;
+              summary.birthday = birthday.text;
+              summary.saisonDropdownValue = saisonValue;
+              summary.courseSelectedItem = courseSelectedItem;
+              summary.swimPools = [];
+              for(int i = 0; i<swimPools.length; i++) {
+                if(swimPools[i].isSelected) {
+                  summary.swimPools.add(swimPools[i].name);
+                }
+              }
+              summary.titleValue = titleValue;
+              summary.firstNameParents = firstNameParents.text;
+              summary.lastNameParents = firstNameParents.text;
+              summary.address = '${streetAddress.text} ${houseNumber.text}, '
+                                '${zipCode.text} ${city.text}';
+              summary.email = email.text;
+              summary.phoneNumber = phoneNumber.text;
           }
-          else if(_activeStepIndex == upperBound) {
-            setState(() {
+          else if(activeStepIndex == upperBound) {
               _customer.firstName = firstName.text;
               _customer.lastName = lastName.text;
               _customer.birthday = birthday.text;
@@ -230,12 +233,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   context,
                   MaterialPageRoute(
                       builder: (context) => CustomerDetails(data: _customer.firstName)));
-            });
+            }
           }
         }
 
       },
-      child: activeStep < upperBound ? const Text('Weiter') : const Text('Kostenpflichtig buchen') ,
+      child: activeStepIndex < upperBound ? const Text('Weiter') : const Text('Kostenpflichtig buchen') ,
     );
   }
 
@@ -244,15 +247,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return ElevatedButton(
       onPressed: () {
         // Decrement activeStep, when the previous button is tapped. However, check for lower bound i.e., must be greater than 0.
-        if (activeStep > 0) {
+        if (activeStepIndex > 0) {
           setState(() {
-            activeStep--;
+            activeStepIndex--;
           });
         } else {
           Navigator.pop(context);
         }
       },
-      child: activeStep > 0 ? const Text('Zurück') : const Text('Abrechen'),
+      child: activeStepIndex > 0 ? const Text('Zurück') : const Text('Abrechen'),
     );
   }
 
@@ -283,7 +286,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // Returns the header text based on the activeStep.
   String headerText() {
-    switch (activeStep) {
+    switch (activeStepIndex) {
       case 0: // activeStep minus 1
         return 'Preface 1';
 
@@ -305,7 +308,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget body() {
-    switch (activeStep) {
+    switch (activeStepIndex) {
       case 0: // activeStep minus 1
         return stepOne();
 
@@ -332,7 +335,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         InputField(
           controller: firstName,
           labelText: "Vorname des Schwimmschülers",
-          // validatorText: 'firstName',
+          errorText: 'firstName',
         ),
         InputField(
           controller: lastName,
@@ -398,9 +401,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget stepTow() {
-    return Form(
+    return SingleChildScrollView(
       child: Column(
         children: [
+          const SizedBox(height: 8.0,),
           InputDecorator(
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(
@@ -413,8 +417,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child:DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                       isExpanded: true,
-                      value: dropdownValue,
-                      items: sisonList.map<DropdownMenuItem<String>>((String value) {
+                      value: saisonValue,
+                      items: saisonList.map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
                           child: Text(value),
@@ -423,7 +427,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       onChanged: (String? value) {
                         // This is called when the user selects an item.
                         setState(() {
-                          dropdownValue = value!;
+                          saisonValue = value!;
                         });
                       })
               )
@@ -434,36 +438,45 @@ class _SignUpScreenState extends State<SignUpScreen> {
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
-                "Dem Alter entsprechende Kurse"
+              "Dem Alter entsprechende Kurse",
             ),
           ),
           const Divider(),
           ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              scrollDirection: Axis.vertical,
-              itemCount: _courseList.length,
-              itemBuilder: (context, index){
-                return SizedBox(
-                  height: 30,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            scrollDirection: Axis.vertical,
+            itemCount: swimCourses.length,
+            itemBuilder: (context, index) {
+              return SizedBox(
+                // height: 50, // Sie können die Höhe nach Bedarf festlegen oder entfernen
+                child: Visibility(
+                  visible: swimCourses[index].isCourseVisible,
                   child: Row(
                     children: [
                       Radio(
-                          groupValue: selectedItem,
-                          value: _courseList[index].courseName,
-                          // title: Text(_swimPoolCheckbox[index].title),
-                          //subtitle: Text(_swimPoolCheckbox[index].subTitle),
-                          onChanged: (val){
-                            setState(() {
-                              selectedItem = val.toString();
-                            });
-                          },
+                        groupValue: courseSelectedItem,
+                        value: swimCourses[index].courseName,
+                        onChanged: (val) {
+                          setState(() {
+                            courseSelectedItem = val.toString();
+                          });
+                        },
+                      ),
+                      Flexible(
+                        child: Wrap(
+                          children: [
+                            Text(
+                              '${swimCourses[index].courseName} '
+                                  '${swimCourses[index].coursePrice} €',
+                              overflow: TextOverflow.visible, // Bei Bedarf können Sie Text Beschneidung hinzufügen
+                            ),
+                          ],
                         ),
-                      Text('${_courseList[index].courseName} '
-                          '${_courseList[index].coursePrice} '
-                          '€'),
+                      ),
                       IconButton(
-                        onPressed: () => showCourseDescription(context, index),
+                        onPressed: () => showCourseDescription(context,
+                            index),
                         icon: const Icon(
                           Icons.info_rounded,
                           color: Colors.blue,
@@ -472,15 +485,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       )
                     ],
                   ),
-
-                );
-              }
+                ),
+              );
+            },
           ),
           const Divider(),
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
-                "¹ Eine Kursübersicht über all unsere von uns angebotenen Kurse."
+              "¹ Eine Kursübersicht über all unsere von uns angebotenen Kurse.",
             ),
           ),
           const SizedBox(
@@ -492,71 +505,70 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget stepThree() {
-    return Column(
-      children: [
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-              "Welche Bäder kommen für dich in Frage? *"
+    return Form(
+      child: Expanded(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                    "Welche Bäder kommen für dich in Frage? *"
+                ),
+              ),
+              const Divider(thickness: 2,),
+              ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  scrollDirection: Axis.vertical,
+                  itemCount: swimPools.length,
+                  itemBuilder: (context, index) {
+                    return SizedBox(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 9,
+                            child: CheckboxListTile(
+                                controlAffinity: ListTileControlAffinity.leading,
+                                value: swimPools[index].isSelected,
+                                title: Text(swimPools[index].name),
+                                onChanged: (val) {
+                                  updateSwimPoolSelection(index, val!);
+                                }
+                            ),
+                          ),
+                          Expanded(
+                            flex: 1,
+                            child: IconButton(
+                              onPressed: () => showCourseDescription(context, index),
+                              icon: const Icon(
+                                Icons.info_rounded,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8.0,)
+                        ],
+                      ),
+                    );
+                  }
+              ),
+              const SizedBox(height: 16.0,),
+              const Divider(thickness: 2,),
+              const Text('Für die Terminierung kommen wir bis zum 31. '
+                  'Dezember auf dich zu.'),
+            ],
           ),
         ),
-        const Divider(),
-        ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            scrollDirection: Axis.vertical,
-            itemCount: _swimPoolCheckbox.length,
-            itemBuilder: (context, index){
-              return SizedBox(
-                height: 30,
-                child: CheckboxListTile(
-                    value: _swimPoolCheckbox[index].isSelected,
-                    title: Text(_swimPoolCheckbox[index].title),
-                    //subtitle: Text(_swimPoolCheckbox[index].subTitle),
-                    onChanged: (val){
-                      setState(() {
-                        _swimPoolCheckbox[index].isSelected = val!;
-                      });
-                      if(_swimPoolCheckbox[0].isSelected) {
-                        _isVisibleFixTermine = true;
-                      }
-                      if(_swimPoolCheckbox[1].isSelected) {
-                        fixTermine.add('value');
-                      }
-                      else {
-                        fixTermine.remove('value');
-                      }
-                    }
-                    ),
-              );
-            }
-        ),
-        const Divider(),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          scrollDirection: Axis.vertical,
-          itemCount: fixTermine.length,
-          itemBuilder: (BuildContext context, int index) {
-            return Visibility(
-              visible: _isVisibleFixTermine,
-              child: SizedBox(
-                height: 30,
-                child: Radio(
-                    value: fixTermine[index],
-                    onChanged: (val){
-                      setState(() {
-
-                      });
-                    },
-                  groupValue: fixTermine[0]),
-              ),
-            );
-          },
-
-        ),
-      ],
+      ),
     );
+  }
+
+  void updateSwimPoolSelection(int index, bool isSelected) {
+    setState(() {
+      swimPools[index].isSelected = isSelected;
+    });
   }
 
   Widget stepFour() {
@@ -579,7 +591,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       dropdownColor: const Color(0xFFE0E0E0),
                       borderRadius: BorderRadius.circular(24.0),
                       isExpanded: true,
-                      value: dropdownTitleValue,
+                      value: titleValue,
                       items: titleList.map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
@@ -589,7 +601,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       onChanged: (String? value) {
                         // This is called when the user selects an item.
                         setState(() {
-                          dropdownTitleValue = value!;
+                          titleValue = value!;
                         });
                       })
               ),
@@ -597,48 +609,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
             const SizedBox(
               height: 8,
             ),
-            InputCustomField(
+            InputField(
               controller: firstNameParents,
               labelText: "Vorname des Erziehungsberechtigten",
-              validatorText: 'firstName',
+              // validatorText: 'firstName',
             ),
-            InputCustomField(
+            InputField(
               controller: lastNameParents,
               labelText: "Nachname des Erziehungsberechtigten",
-              validatorText: 'lastName',
+              // validatorText: 'lastName',
             ),
-            InputCustomField(
+            InputField(
               controller: streetAddress,
               labelText: "Straße",
-              validatorText: 'lastName',
+              // validatorText: 'lastName',
             ),
-            InputCustomField(
+            InputField(
               controller: houseNumber,
               labelText: "Hausnummer",
-              validatorText: 'lastName',
+              // validatorText: 'lastName',
             ),
-            InputCustomField(
+            InputField(
               controller: zipCode,
               labelText: "PLZ",
-              validatorText: 'lastName',
+              // validatorText: 'lastName',
             ),
-            InputCustomField(
+            InputField(
               controller: city,
               labelText: "Ort",
-              validatorText: 'lastName',
+              // validatorText: 'lastName',
             ),
-            InputCustomField(
+            InputField(
                 controller: email,
                 labelText: "E-Mail",
-                validatorText: "Please enter a valid email",
-                inputTyp: "email",
+                // validatorText: "Please enter a valid email",
+                // inputTyp: "email",
             ),
-            InputCustomField(
+            InputField(
               controller: emailConfirm,
               labelText: "E-Mail-Bestätigung",
-              validatorText: "Please enter a valid email",
-              inputTyp: "emailConfirm",
-              confirmValue: email.text
+              // validatorText: "Please enter a valid email",
+              // inputTyp: "emailConfirm",
+              // confirmValue: email.text
             ),
             const SizedBox(
               height: 8,
@@ -719,7 +731,170 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget stepFive() {
-    return const Column();
+    return Expanded(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FractionallySizedBox(
+            widthFactor: 1,
+              child: Card(
+                elevation: 4, // Passen Sie die Elevation nach Bedarf an
+                margin: const EdgeInsets.all(8.0), // Passen Sie die Ränder nach Bedarf an
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Zusammenfassung der Eingaben:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Vorname: ${summary.firstName}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Nachname: ${summary.lastName}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Geburtsdatum: ${summary.birthday}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Saison: ${summary.saisonDropdownValue}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Ausgewählter Kurs: ${summary.courseSelectedItem}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Ausgewählte Schwimmbäder: ${summary.swimPools.join(', ')}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Title: ${summary.titleValue}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Nachname: ${summary.lastNameParents}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Nachname: ${summary.firstNameParents}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Adresse: ${summary.address}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'E-Mail: ${summary.email}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      Text(
+                        'Handynummer: ${summary.phoneNumber}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      // Fügen Sie hier weitere Felder hinzu, um die Zusammenfassung zu vervollständigen.
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Card(
+              elevation: 4, // Passen Sie die Elevation nach Bedarf an
+              margin: const EdgeInsets.all(8.0), // Passen Sie die Ränder nach Bedarf an
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Zusätzliche Informationen:',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8.0),
+                    const Text(
+                      'Mit Deiner Anmeldebestätigung (Email) erhältst Du eine '
+                          'Aufforderung zur Überweisung der Anzahlung von 100€. '
+                          'Dieser Betrag muss innerhalb 7 Werktagen bei uns '
+                          'verbucht sein. Andernfalls würden wir den Kursplatz '
+                          'wieder freigeben - Deine Buchung stornieren.',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 8.0),
+                    const Text(
+                      'Bestätigung *',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,),
+                    ),
+                    CheckboxListTile(
+                        controlAffinity: ListTileControlAffinity.leading,
+                        value: isConfirmed,
+                        title: const Text('Mir ist bewusst, dass ich bis zu 30 '
+                            'Minuten Anfahrt in Kauf nehmen muss.'),
+                      onChanged: (bool? value) {
+                          setState(() {
+                            isConfirmed = value!;
+                          });
+                      },
+                    ),
+                    const SizedBox(height: 8.0),
+                    const Text(
+                      'Stornierung *',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,),
+                    ),
+                    CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: isCancelled,
+                      title: const Text('Bei Stornierung nach dem 28.02. '
+                          'verfällt die Anzahlung.'),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          isCancelled = value!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8.0),
+                    const Text(
+                      'DSGVO-Einverständnis *',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,),
+                    ),
+                    CheckboxListTile(
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: isGDPRConsent,
+                      title: const Text('Ich willige ein, dass diese Website '
+                          'meine übermittelten Informationen speichert, '
+                          'sodass meine Anfrage beantwortet werden kann.'),
+                      onChanged: (bool? value) {
+                        setState(() {
+                          isGDPRConsent = value!;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<String?> showCourseDescription(BuildContext context, int index) {
@@ -735,8 +910,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: Column(
                   children: [
                     Text(
-                      'Kurs Name: ${_courseList[index].courseName}', textAlign: TextAlign.left,),
-                    Text('Kurs Price: ${_courseList[index].coursePrice} €', textAlign: TextAlign.right,),
+                      'Kurs Name: ${swimCourses[index].courseName}', textAlign: TextAlign.left,),
+                    Text('Kurs Price: ${swimCourses[index].coursePrice} €', textAlign: TextAlign.right,),
                   ],
                 )
             ),
